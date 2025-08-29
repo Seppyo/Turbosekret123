@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Goger Map</title>
+
+  <!-- Leaflet CSS -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  />
+
+  <style>
+    body, html { margin: 0; padding: 0; height: 100%; }
+    #map { height: 100%; width: 100%; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Supabase JS z CDN -->
+  <script src="js/supabase.min.js"></script>
+
+  <script>
+    // Supabase settings
+    const SUPABASE_URL = 'https://ublfvhgzadcxbjxqjher.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVibGZ2aGd6YWRjeGJqeHFqaGVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYzMTMwNTEsImV4cCI6MjA3MTg4OTA1MX0.IUBmTXf8R_60cDwWRUWFYlLi6WkOVHYcEU8BhpALNnY';
+
+    // Inicjalizacja Supabase
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // Inicjalizacja mapy
+    const map = L.map('map').setView([50.309618, 19.010782], 16);
+
+    // OpenStreetMap tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '© OpenStreetMap'
+    }).addTo(map);
+
+    const markers = [];
+
+    // Funkcja pobierania lokalizacji z Supabase
+    async function fetchLocations() {
+      try {
+        const { data, error } = await supabaseClient
+          .from('locations')
+          .select('lat, lon, user_id, created_at');
+
+        if (error) throw error;
+
+        // Usuń stare markery
+        markers.forEach(marker => map.removeLayer(marker));
+        markers.length = 0;
+
+        // Dodaj nowe markery
+        data.forEach(loc => {
+          if (loc.lat && loc.lon) {
+            const marker = L.marker([loc.lat, loc.lon]).addTo(map);
+            marker.bindPopup(`<b>${loc.user_id}</b><br>${new Date(loc.created_at).toLocaleString()}`);
+            markers.push(marker);
+          }
+        });
+      } catch (err) {
+        console.error('Error fetching locations:', err);
+      }
+    }
+
+    // Pierwsze pobranie lokalizacji
+    fetchLocations();
+
+    // Odświeżanie co 10 sekund
+    setInterval(fetchLocations, 10000);
+  </script>
+</body>
+</html>
